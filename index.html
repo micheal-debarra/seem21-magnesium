@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magnesium Meta-analysis</title>
+<style>
+:root {
+  --paper: #FBF8F3; --surface: #FFFFFF; --ink: #2B2118; --muted: #62584E;
+  --line: #DDD5CA; --accent: #002A53; --teal: #51C1E1; --tealink: #1F6F8B;
+  --low: #2E7D32; --some: #A66A00; --high: #B5462F; --off: #B9B0A5;
+  --focus: #1F6F8B; --error: #B5462F; --banner: #E3EAF6;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14171B; --surface: #1C2026; --ink: #ECE7E0; --muted: #A9A096;
+    --line: #353C45; --accent: #8EC3EE; --teal: #51C1E1; --tealink: #7FD3EC;
+    --low: #6CC070; --some: #E3A94A; --high: #EE8468; --off: #5E6771;
+    --focus: #7FD3EC; --error: #EE8468; --banner: #1F2A38;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14171B; --surface: #1C2026; --ink: #ECE7E0; --muted: #A9A096;
+  --line: #353C45; --accent: #8EC3EE; --teal: #51C1E1; --tealink: #7FD3EC;
+  --low: #6CC070; --some: #E3A94A; --high: #EE8468; --off: #5E6771;
+  --focus: #7FD3EC; --error: #EE8468; --banner: #1F2A38;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; font-size: 16px; line-height: 1.45;
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 16px 40px; }
+header.top { border-top: 6px solid var(--teal); background: var(--banner); margin-bottom: 20px; }
+header.top .wrap { padding-top: 18px; padding-bottom: 18px; }
+.kicker { margin: 0 0 4px; font-size: 14px; color: var(--muted); letter-spacing: .02em; }
+h1 { margin: 0 0 8px; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.15; color: var(--accent); }
+.intro { margin: 0; max-width: 78ch; }
+h2 { font-size: 20px; margin: 0 0 10px; color: var(--accent); }
+h3 { font-size: 17px; margin: 0 0 8px; color: var(--accent); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+@media (min-width: 1000px) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; }
+  .plotcol { position: sticky; top: 12px; }
+}
+@media (max-width: 999px) { .plotcol { order: -1; } }
+
+/* filter */
+fieldset.filter { border: 0; margin: 0 0 12px; padding: 0; }
+fieldset.filter legend { font-weight: bold; padding: 0; margin-bottom: 6px; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg label {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 15px; background: var(--paper);
+}
+.seg input { accent-color: var(--accent); margin: 0; }
+.seg label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.custom-note { font-size: 14px; color: var(--muted); margin: 6px 0 0; min-height: 1.2em; }
+
+/* table */
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+thead th { font-size: 13px; color: var(--muted); font-weight: bold; background: var(--paper); }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+tr.excluded td:not(.inc) { color: var(--off); }
+tr.added td { background: color-mix(in srgb, var(--teal) 10%, transparent); }
+td.inc { width: 36px; }
+td.inc input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+.trialname { font-weight: bold; }
+.sub { display: block; font-size: 12px; color: var(--muted); font-weight: normal; }
+.rob { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.low { background: var(--low); } .dot.some { background: var(--some); } .dot.high { background: var(--high); }
+tr.excluded .dot { opacity: .45; }
+button {
+  font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--surface); padding: 8px 14px; font-weight: bold;
+}
+button.ghost { background: transparent; color: var(--accent); }
+button.small { padding: 2px 8px; font-size: 13px; font-weight: normal; margin-left: 6px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.hint { font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+
+/* new trial */
+.newtrial { margin-top: 18px; border-left: 4px solid var(--teal); }
+.newtrial p { margin: 0 0 10px; max-width: 70ch; }
+.result-quote { background: var(--paper); border-radius: 8px; padding: 10px 12px; }
+form.add { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin-top: 12px; }
+form.add .full { grid-column: 1 / -1; }
+form.add label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 3px; }
+form.add input, form.add select {
+  width: 100%; font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--ink);
+}
+form.add input[aria-invalid="true"] { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.armgroup { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px 10px; margin: 0; min-width: 0; }
+.armgroup legend { font-weight: bold; font-size: 14px; padding: 0 4px; }
+.armgroup .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.formmsg { min-height: 1.3em; margin: 0; font-size: 14px; }
+.formmsg.err { color: var(--error); font-weight: bold; }
+.formmsg.ok { color: var(--low); font-weight: bold; }
+@media (max-width: 480px) { form.add { grid-template-columns: minmax(0, 1fr); } }
+
+/* plot */
+.summary { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline; margin: 0 0 6px; }
+.big { font-size: clamp(22px, 3vw, 28px); font-weight: bold; color: var(--accent); }
+.big small { font-size: 16px; font-weight: normal; color: var(--ink); }
+.het { font-size: 15px; }
+.prev { font-size: 14px; color: var(--muted); margin: 0 0 8px; min-height: 1.3em; }
+.prev .swatch { display: inline-block; width: 22px; height: 10px; border: 2px dashed var(--tealink); vertical-align: middle; margin-right: 4px; transform: rotate(0deg); }
+#plotbox { width: 100%; }
+svg { display: block; width: 100%; height: auto; font-family: Arial, Helvetica, sans-serif; }
+.plotbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.legend { font-size: 13px; color: var(--muted); }
+
+/* about + footer */
+details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 10px; }
+summary { cursor: pointer; font-weight: bold; color: var(--accent); }
+dl.trials { margin: 10px 0 0; }
+dl.trials dt { font-weight: bold; margin-top: 12px; }
+dl.trials dd { margin: 2px 0 0; font-size: 15px; }
+footer.notes { margin-top: 24px; font-size: 15px; }
+footer.notes p, footer.notes li { max-width: 90ch; }
+footer.notes ol { padding-left: 20px; font-size: 14px; color: var(--muted); }
+.credit { font-size: 13px; color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.newlist { margin: 4px 0 6px; }
+.newlist td, .newlist th { padding: 6px 8px; }
+form.add select[aria-invalid="true"] { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+.newlist td, .newlist th { white-space: normal; }
+.newlist td.num { white-space: nowrap; }
+thead th { white-space: normal; vertical-align: bottom; }
+td.robcell { white-space: normal; }
+td .sub { white-space: normal; }
+.datacol #rows td:nth-child(2) { white-space: normal; }
+.datacol th, .datacol td { padding-left: 6px; padding-right: 6px; }
+.datacol td.robcell { font-size: 13px; }
+.datacol td.inc { width: 24px; }
+.datacol table { font-size: 14px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 0 12px; }
+.tabs [role="tab"] {
+  background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: 0;
+  border-radius: 8px 8px 0 0; padding: 8px 14px; margin-bottom: -1px; font-weight: bold;
+}
+.tabs [role="tab"][aria-selected="true"] { color: var(--accent); background: var(--surface); border-color: var(--line); }
+#funnelbox { width: 100%; }
+.legend { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.nojs { background: #FBE6DF; color: #6B2412; border-bottom: 1px solid #E8B7A7; }
+.nojs .wrap { padding-top: 12px; padding-bottom: 12px; }
+.nojs p { margin: 0; max-width: 80ch; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nojs { background: #3A211A; color: #F5CDBF; border-color: #6B3A2C; } }
+:root[data-theme="dark"] .nojs { background: #3A211A; color: #F5CDBF; border-color: #6B3A2C; }
+</style>
+</head>
+<body>
+<div class="nojs" id="nojs" role="alert">
+  <div class="wrap">
+    <p><strong>The interactive parts of this page haven't loaded.</strong> The table, the numbers and the plots need
+      JavaScript, which this viewer has blocked. In Brightspace, open the page in a new window (the button with an
+      arrow pointing out of a box, above the page). Or download the file and open it in your web browser.</p>
+  </div>
+</div>
+<header class="top">
+  <div class="wrap">
+    <p class="kicker">SEEM TBL 2.1: Validity and Systematic Reviews &middot; Application exercise</p>
+    <h1>Does intravenous magnesium reduce deaths after a heart attack?</h1>
+    <p class="intro">In the 1980s several small randomised trials gave intravenous magnesium to people with a
+      suspected heart attack (acute myocardial infarction). In 1991 Teo and colleagues pooled the seven trials then
+      available, and the table starts with those seven. The outcome is death, mostly in hospital. The forest plot
+      pools the trials in a fixed-effect meta-analysis. Tick or untick trials to include or leave them out, and use
+      the form to add newer trials. The plots and the numbers update as you go.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <main class="layout">
+    <section class="panel datacol" aria-labelledby="h-trials">
+      <h2 id="h-trials">The trials</h2>
+
+      <fieldset class="filter">
+        <legend>Which trials to pool</legend>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="filter" value="all" checked> All trials</label>
+          <label><input type="radio" name="filter" value="low"> Low risk of bias only</label>
+        </div>
+        <p class="custom-note" id="customNote" aria-live="polite"></p>
+      </fieldset>
+
+      <div class="tablewrap">
+        <table>
+          <caption class="sr">Trials of intravenous magnesium versus control after a suspected heart attack: deaths</caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr">Include</span></th>
+              <th scope="col">Trial</th>
+              <th scope="col" class="num">Magnesium<span class="sub">deaths / total</span></th>
+              <th scope="col" class="num">Control<span class="sub">deaths / total</span></th>
+              <th scope="col">Risk of bias<span class="sub">our rating</span></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <section class="panel newtrial" aria-labelledby="h-new">
+        <h3 id="h-new">Newer trials</h3>
+        <p>Two larger trials were published after Teo's meta-analysis. Add each one using the form below when the
+          exercise asks you to, and watch what happens to the diamond.</p>
+        <div class="tablewrap">
+          <table class="newlist">
+            <caption class="sr">Newer trials to add</caption>
+            <thead>
+              <tr>
+                <th scope="col">Trial</th>
+                <th scope="col">Patients</th>
+                <th scope="col" class="num">Magnesium<span class="sub">deaths / total</span></th>
+                <th scope="col" class="num">Control<span class="sub">deaths / total</span></th>
+                <th scope="col">Risk of bias</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="trialname">LIMIT-2 (1992)</td><td>UK, suspected heart attack</td><td class="num">90 / 1,159</td><td class="num">118 / 1,157</td><td>Low</td></tr>
+              <tr><td class="trialname">ISIS-4 (1995)</td><td>1,086 hospitals, suspected heart attack</td><td class="num">2,216 / 29,011</td><td class="num">2,103 / 29,039</td><td>Low</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <form class="add" id="addForm" novalidate>
+          <div class="full">
+            <label for="f-name">Trial name</label>
+            <input id="f-name" name="name" type="text" maxlength="40" autocomplete="off" placeholder="e.g. LIMIT-2">
+          </div>
+          <fieldset class="armgroup">
+            <legend>Magnesium group</legend>
+            <div class="pair">
+              <div><label for="f-a">Deaths</label><input id="f-a" name="a" type="text" inputmode="numeric" autocomplete="off"></div>
+              <div><label for="f-n1">Total</label><input id="f-n1" name="n1" type="text" inputmode="numeric" autocomplete="off"></div>
+            </div>
+          </fieldset>
+          <fieldset class="armgroup">
+            <legend>Control group</legend>
+            <div class="pair">
+              <div><label for="f-c">Deaths</label><input id="f-c" name="c" type="text" inputmode="numeric" autocomplete="off"></div>
+              <div><label for="f-n2">Total</label><input id="f-n2" name="n2" type="text" inputmode="numeric" autocomplete="off"></div>
+            </div>
+          </fieldset>
+          <div>
+            <label for="f-rob">Risk of bias (overall)</label>
+            <select id="f-rob" name="rob">
+              <option value="">Choose…</option>
+              <option value="low">Low</option>
+              <option value="some">Some concerns</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div style="align-self:end"><button type="submit">Add trial</button></div>
+          <p class="formmsg full" id="formMsg" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <details>
+        <summary>About the trials</summary>
+        <dl class="trials" id="about"></dl>
+      </details>
+    </section>
+
+    <section class="panel plotcol" aria-labelledby="h-plot">
+      <h2 id="h-plot" class="sr">Results</h2>
+      <div class="tabs" role="tablist" aria-label="Plot">
+        <button type="button" role="tab" id="tab-forest" aria-controls="panel-forest" aria-selected="true">Forest plot</button>
+        <button type="button" role="tab" id="tab-funnel" aria-controls="panel-funnel" aria-selected="false" tabindex="-1">Funnel plot</button>
+      </div>
+      <div class="summary" aria-live="polite" id="summary"></div>
+      <p class="prev" id="prev"></p>
+      <div role="tabpanel" id="panel-forest" aria-labelledby="tab-forest">
+        <div id="plotbox"></div>
+        <p class="legend">Square: one trial (bigger = more weight). Line: its 95% CI. Diamond: pooled result.
+          A risk ratio below 1 means fewer deaths with magnesium.</p>
+      </div>
+      <div role="tabpanel" id="panel-funnel" aria-labelledby="tab-funnel" hidden>
+        <div id="funnelbox"></div>
+        <p class="legend">Dot: one trial, placed by its result (across) and its size (up). Diamond: the pooled result,
+          placed at the total number of patients. Dashed line: no difference. Small trials scatter more widely by chance;
+          if there is no bias, they should scatter evenly on both sides of the big trials, like an upside-down funnel.</p>
+      </div>
+      <div class="plotbar">
+        <span></span>
+        <button type="button" class="ghost" id="reset">Start again</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="notes">
+    <details>
+      <summary>How the numbers are worked out</summary>
+      <p><strong>Risk ratio:</strong> the risk of death with magnesium divided by the risk of death in the control
+        group. Below 1 favours magnesium; 1 means no difference. Teo et al. reported an odds ratio (a 55% reduction in
+        the odds of death), so their numbers differ slightly from these.</p>
+      <p><strong>Pooling:</strong> a fixed-effect meta-analysis (inverse variance), the approach used in the original
+        magnesium meta-analyses. It assumes that all the trials are estimating one true effect, so each trial is
+        weighted by its precision and the largest trials dominate. A random-effects model, which allows the true effect
+        to vary between trials, gives small trials relatively more weight. The diamond's centre is the pooled risk ratio
+        and its width is the 95% confidence interval. P is the p-value for the pooled effect.</p>
+      <p><strong>Chi² test (Cochran's Q):</strong> asks whether the trials differ more than chance alone would explain.
+        It is weak when there are few trials, so a large P does not show that the trials agree.</p>
+      <p><strong>I²:</strong> the share of the variation between trial results that reflects real differences rather
+        than chance: I² = (Q − df) ÷ Q. Rough guide: 25% low, 50% moderate, 75% high.</p>
+      <p><strong>Funnel plot:</strong> drawn as in Egger and Davey Smith (1995), with the number of patients on the
+        vertical axis. Current guidance plots the standard error instead and advises formal tests for asymmetry only
+        when there are at least 10 trials.</p>
+      <p><strong>Risk of bias:</strong> our own ratings for this exercise, using the RoB 2 categories and the published
+        reports. Reasons are under "About the trials".</p>
+    </details>
+    <details>
+      <summary>Sources</summary>
+      <ol>
+        <li>Teo KK, Yusuf S, Collins R, Held PH, Peto R. Effects of intravenous magnesium in suspected acute myocardial
+          infarction: overview of randomised trials. <i>BMJ</i> 1991;303:1499–503.</li>
+        <li>Woods KL, Fletcher S, Roffe C, Haider Y. Intravenous magnesium sulphate in suspected acute myocardial
+          infarction: results of the second Leicester Intravenous Magnesium Intervention Trial (LIMIT-2).
+          <i>Lancet</i> 1992;339:1553–8.</li>
+        <li>ISIS-4 Collaborative Group. ISIS-4: a randomised factorial trial assessing early oral captopril, oral
+          mononitrate, and intravenous magnesium sulphate in 58,050 patients with suspected acute myocardial infarction.
+          <i>Lancet</i> 1995;345:669–85.</li>
+        <li>Egger M, Davey Smith G. Misleading meta-analysis. <i>BMJ</i> 1995;310:752–4.</li>
+        <li>Egger M, Davey Smith G, Altman DG, eds. <i>Systematic Reviews in Health Care: Meta-analysis in Context</i>.
+          2nd ed. London: BMJ Books, 2001 (source of the trial-level death counts).</li>
+        <li>Morton BC et al. <i>Magnesium</i> 1984;3:346–52 · Rasmussen HS et al. <i>Lancet</i> 1986;1:234–6 ·
+          Smith LF et al. <i>Int J Cardiol</i> 1986;12:175–83 · Abraham AS et al. <i>Arch Intern Med</i> 1987;147:753–5 ·
+          Feldstedt M et al. <i>Eur Heart J</i> 1991;12:1215–8 · Shechter M et al. <i>Am J Cardiol</i> 1990;66:271–4 ·
+          Ceremuzynski L et al. <i>Am Heart J</i> 1989;118:1333–4.</li>
+      </ol>
+    </details>
+    <p class="credit">Prepared for SEEM TBL 2.1, Brunel Medical School. All calculations run in your browser;
+      nothing you enter is sent anywhere.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var nojs = document.getElementById("nojs");
+  if (nojs) nojs.parentNode.removeChild(nojs);
+
+  // ------------------------------------------------------------------ data
+  // Deaths / randomised from Egger, Davey Smith & Altman (2001); the first seven are Teo et al.'s
+  // 1991 overview (totals 25/657 v 53/644). Risk-of-bias ratings are ours.
+  var BASE = [
+    { id: "morton", name: "Morton", year: 1984, a: 1, n1: 40, c: 2, n2: 36, rob: "some",
+      why: "Randomised and double-blind, but how patients were allocated isn't described, and death wasn't the trial's main outcome (it measured infarct size)." },
+    { id: "rasmussen", name: "Rasmussen", year: 1986, a: 9, n1: 135, c: 23, n2: 135, rob: "some",
+      why: "Double-blind and placebo-controlled; allocation method not described. The published report gives deaths only for the 130 patients with a confirmed heart attack (56 on magnesium, 74 on placebo), so the figures here come from a different count." },
+    { id: "smith", name: "Smith", year: 1986, a: 2, n1: 200, c: 7, n2: 200, rob: "some",
+      why: "Double-blind with a saline placebo; allocation method not described; the main outcome was arrhythmias. The published report describes 200 patients in total, while the meta-analysis data list 200 in each group." },
+    { id: "abraham", name: "Abraham", year: 1987, a: 1, n1: 48, c: 1, n2: 46, rob: "some",
+      why: "Placebo-controlled, but the methods are only briefly reported; the main outcome was serious arrhythmias in the first 24 hours." },
+    { id: "feldstedt", name: "Feldstedt", year: 1988, a: 10, n1: 150, c: 8, n2: 148, rob: "some",
+      why: "Double-blind and placebo-controlled, with all 298 randomised patients accounted for; allocation method not described." },
+    { id: "shechter", name: "Shechter", year: 1989, a: 1, n1: 59, c: 9, n2: 56, rob: "some",
+      why: "Double-blind and placebo-controlled; allocation method not described. The full paper reports 50 and 53 patients with a confirmed heart attack, while the meta-analysis data list 59 and 56." },
+    { id: "ceremuzynski", name: "Ceremuzynski", year: 1989, a: 1, n1: 25, c: 3, n2: 23, rob: "some",
+      why: "Published only as a short letter, so the methods can't be assessed; the main outcome was arrhythmias." }
+  ];
+  // The newer trials students type in; matched on their counts to attach details.
+  var KNOWN = [
+    { key: "limit2", label: "LIMIT-2", year: 1992, a: 90, n1: 1159, c: 118, n2: 1157, rob: "low",
+      about: "Leicester, UK; 2,316 patients with a suspected heart attack. Randomised, double-blind, with a saline placebo. Death within 28 days was the main outcome, known for 99.3% of patients and analysed by intention to treat. Rated low risk of bias." },
+    { key: "isis4", label: "ISIS-4", year: 1995, a: 2216, n1: 29011, c: 2103, n2: 29039, rob: "low",
+      about: "58,050 patients in 1,086 hospitals; a factorial trial that also tested captopril and nitrates. Magnesium was compared with open control (no placebo), but the outcome, death within five weeks, is objective. Rated low risk of bias. Patients joined a median of 8 hours after their symptoms began, which magnesium's supporters later argued was too late." }
+  ];
+  var ROB = { low: "Low", some: "Some concerns", high: "High" };
+
+  // ---------------------------------------------------------- statistics
+  var Z = 1.959964;
+
+  function sum(xs) { var s = 0; for (var i = 0; i < xs.length; i++) s += xs[i]; return s; }
+
+  // ln(risk ratio) and its variance; 0.5 added to every cell if any cell is zero.
+  function trialStats(t) {
+    var a = t.a, n1 = t.n1, c = t.c, n2 = t.n2;
+    if ((a === 0 && c === 0) || (a === n1 && c === n2)) return { estimable: false };
+    var corrected = false;
+    if (a === 0 || c === 0 || a === n1 || c === n2) { a += 0.5; c += 0.5; n1 += 1; n2 += 1; corrected = true; }
+    var y = Math.log((a / n1) / (c / n2));
+    var v = 1 / a - 1 / n1 + 1 / c - 1 / n2;
+    return { estimable: true, y: y, v: v, rr: Math.exp(y),
+             lo: Math.exp(y - Z * Math.sqrt(v)), hi: Math.exp(y + Z * Math.sqrt(v)), corrected: corrected };
+  }
+
+  // Fixed-effect (inverse-variance) meta-analysis.
+  function pool(ys, vs) {
+    var k = ys.length;
+    if (k === 0) return null;
+    var w = vs.map(function (v) { return 1 / v; }), sw = sum(w);
+    var m = sum(w.map(function (wi, i) { return wi * ys[i]; })) / sw, se = Math.sqrt(1 / sw);
+    var Q = sum(w.map(function (wi, i) { return wi * Math.pow(ys[i] - m, 2); }));
+    var df = k - 1;
+    return {
+      k: k, mu: m, se: se, rr: Math.exp(m), lo: Math.exp(m - Z * se), hi: Math.exp(m + Z * se),
+      pEffect: chi2sf(Math.pow(m / se, 2), 1),
+      Q: Q, df: df,
+      p: k > 1 ? chi2sf(Q, df) : null,
+      I2: k > 1 ? (Q > 0 ? Math.max(0, (Q - df) / Q) * 100 : 0) : null,
+      weights: w.map(function (wi) { return 100 * wi / sw; })
+    };
+  }
+
+  // Upper tail of the chi-squared distribution via the regularised incomplete gamma function.
+  function lgamma(x) {
+    var g = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+             -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+    var y = x, tmp = x + 5.5; tmp -= (x + 0.5) * Math.log(tmp);
+    var ser = 1.000000000190015;
+    for (var j = 0; j < 6; j++) ser += g[j] / ++y;
+    return -tmp + Math.log(2.5066282746310005 * ser / x);
+  }
+  function gammq(a, x) {
+    if (x <= 0) return 1;
+    var gln = lgamma(a);
+    if (x < a + 1) {
+      var ap = a, del = 1 / a, s = del;
+      for (var n = 0; n < 500; n++) { ap += 1; del *= x / ap; s += del; if (Math.abs(del) < Math.abs(s) * 1e-14) break; }
+      return 1 - s * Math.exp(-x + a * Math.log(x) - gln);
+    }
+    var b = x + 1 - a, c = 1 / 1e-300, d = 1 / b, h = d;
+    for (var i = 1; i < 500; i++) {
+      var an = -i * (i - a); b += 2;
+      d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
+      c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
+      d = 1 / d; var dl = d * c; h *= dl;
+      if (Math.abs(dl - 1) < 1e-14) break;
+    }
+    return Math.exp(-x + a * Math.log(x) - gln) * h;
+  }
+  function chi2sf(q, df) { return df > 0 ? gammq(df / 2, q / 2) : null; }
+
+  // ------------------------------------------------------------- state
+  var state, prevResult = null, lastResult = null, nextId = 1;
+
+  function fresh() {
+    return {
+      trials: BASE.map(function (t) { return Object.assign({}, t, { include: true, added: false }); }),
+      filter: "all"
+    };
+  }
+
+  function allowed(rob, filter) {
+    if (filter === "low") return rob === "low";
+    return true;
+  }
+
+  function analyse() {
+    var rows = state.trials.map(function (t) { return Object.assign({ t: t }, trialStats(t)); });
+    var pooled = rows.filter(function (r) { return r.t.include && r.estimable; });
+    var res = pool(pooled.map(function (r) { return r.y; }), pooled.map(function (r) { return r.v; }));
+    rows.forEach(function (r) { r.weight = null; });
+    if (res) {
+      pooled.forEach(function (r, i) { r.weight = res.weights[i]; });
+      res.participants = sum(pooled.map(function (r) { return r.t.n1 + r.t.n2; }));
+    }
+    return { rows: rows, res: res };
+  }
+
+  // ------------------------------------------------------------ formatting
+  function f2(x) { return x.toFixed(2); }
+  function fci(lo, hi) { return f2(lo) + " to " + f2(hi); }
+  function fp(p) {
+    if (p === null || p === undefined) return "";
+    if (p < 0.001) return "P < 0.001";
+    if (p < 0.1) return "P = " + p.toFixed(3);  // so 0.045 doesn't round to an ambiguous 0.05
+    return "P = " + p.toFixed(2);
+  }
+  function fint(n) { return n.toLocaleString("en-GB"); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+  function hetText(res) {
+    if (!res || res.k < 2) return "Heterogeneity: not applicable (fewer than two trials)";
+    return "Chi² = " + f2(res.Q) + ", df = " + res.df + ", " + fp(res.p) + "; I² = " + Math.round(res.I2) + "%";
+  }
+  function label(t) { return t.name + (t.year && t.name.indexOf(String(t.year)) < 0 ? " " + t.year : ""); }
+
+  // ------------------------------------------------------------- render
+  var $rows = document.getElementById("rows");
+  var $summary = document.getElementById("summary");
+  var $prev = document.getElementById("prev");
+  var $plot = document.getElementById("plotbox");
+  var $funnel = document.getElementById("funnelbox");
+  var $about = document.getElementById("about");
+  var $note = document.getElementById("customNote");
+
+  function render() {
+    var out = analyse();
+    lastResult = out.res;
+    renderTable(out.rows);
+    renderSummary(out.res);
+    renderPlot(out.rows, out.res);
+    renderFunnel(out.rows, out.res);
+    renderAbout();
+    document.querySelectorAll('input[name="filter"]').forEach(function (r) { r.checked = (r.value === state.filter); });
+    $note.textContent = state.filter === "custom" ? "You have chosen the trials by hand." : "";
+  }
+
+  function renderTable(rows) {
+    $rows.innerHTML = rows.map(function (r) {
+      var t = r.t, cls = (t.include ? "" : "excluded") + (t.added ? " added" : "");
+      var lab = esc(label(t));
+      return "<tr class=\"" + cls + "\">" +
+        "<td class=\"inc\"><input type=\"checkbox\" data-id=\"" + t.id + "\"" + (t.include ? " checked" : "") +
+          " aria-label=\"Include " + lab + "\"></td>" +
+        "<td><span class=\"trialname\">" + lab + "</span>" +
+          (t.added ? "<button type=\"button\" class=\"ghost small\" data-remove=\"" + t.id + "\" aria-label=\"Remove " + lab + "\">Remove</button>" : "") +
+          (r.corrected ? "<span class=\"sub\">0.5 added to each cell</span>" : "") + "</td>" +
+        "<td class=\"num\">" + fint(t.a) + "/" + fint(t.n1) + "</td>" +
+        "<td class=\"num\">" + fint(t.c) + "/" + fint(t.n2) + "</td>" +
+        "<td class=\"robcell\"><span class=\"rob\"><span class=\"dot " + t.rob + "\"></span>" + ROB[t.rob] + "</span></td></tr>";
+    }).join("");
+  }
+
+  function renderSummary(res) {
+    if (!res) {
+      $summary.innerHTML = "<span class=\"big\">No trials selected</span>";
+    } else {
+      $summary.innerHTML =
+        "<span class=\"big\">RR " + f2(res.rr) + " <small>(95% CI " + fci(res.lo, res.hi) + "), " + fp(res.pEffect) + "</small></span>" +
+        "<span class=\"het\">" + res.k + (res.k === 1 ? " trial, " : " trials, ") + fint(res.participants) + " participants</span>" +
+        "<span class=\"het\">" + hetText(res) + "</span>";
+    }
+    if (prevResult) {
+      $prev.innerHTML = "<span class=\"swatch\" aria-hidden=\"true\"></span>Before your last change: RR " + f2(prevResult.rr) +
+        " (" + fci(prevResult.lo, prevResult.hi) + "), " + fp(prevResult.pEffect) +
+        (prevResult.k > 1 ? ", I² = " + Math.round(prevResult.I2) + "%" : "");
+    } else {
+      $prev.textContent = "";
+    }
+  }
+
+  // Forest plot as inline SVG, laid out for the width of its box.
+  var LMIN = 0.05, LMAX = 5, TICKS = [0.05, 0.1, 0.2, 0.5, 1, 2, 5];
+  function renderPlot(rows, res) {
+    var W = Math.max(300, Math.round($plot.clientWidth || $funnel.clientWidth || 600));
+    var showRR = W >= 400, showW = W >= 470;
+    var fs = W < 400 ? 12 : 13;
+    var nameW = W < 400 ? 100 : 122, rrW = showRR ? 112 : 0, wW = showW ? 52 : 0;
+    var L = nameW + 4, R = W - rrW - wW - 12;
+    var xWt = W - rrW - 8;
+    var rowH = 26, top = 34, n = rows.length;
+    var diamY = top + n * rowH + 18, axisY = diamY + 22, H = axisY + (W < 400 ? 70 : 54);
+    var ticks = W < 400 ? [0.1, 0.5, 1, 2, 5] : TICKS;
+    function x(r) {
+      var lr = Math.log(Math.min(Math.max(r, LMIN), LMAX));
+      return L + (lr - Math.log(LMIN)) / (Math.log(LMAX) - Math.log(LMIN)) * (R - L);
+    }
+    function ci(rr, lo, hi) { return f2(rr) + " [" + f2(lo) + ", " + f2(hi) + "]"; }
+    var s = [];
+    s.push('<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-labelledby="plotTitle plotDesc">');
+    s.push('<title id="plotTitle">Forest plot of intravenous magnesium versus control for death after a suspected heart attack</title>');
+    s.push('<desc id="plotDesc">' + (res ? "Pooled risk ratio " + f2(res.rr) + ", 95% confidence interval " + fci(res.lo, res.hi) + ", " + fp(res.pEffect) + ", from " + res.k + " trials. " + hetText(res) : "No trials selected.") + '</desc>');
+    s.push(txt(4, 18, "Trial", "start", "var(--muted)", fs, true));
+    if (showW) s.push(txt(xWt, 18, "Weight", "end", "var(--muted)", fs, true));
+    if (showRR) s.push(txt(W - 2, 18, "RR [95% CI]", "end", "var(--muted)", fs, true));
+    s.push('<line x1="' + x(1) + '" x2="' + x(1) + '" y1="' + (top - 8) + '" y2="' + axisY + '" stroke="var(--ink)" stroke-width="1"/>');
+    rows.forEach(function (r, i) {
+      var t = r.t, y = top + i * rowH + rowH / 2;
+      var on = t.include && r.estimable;
+      var col = on ? "var(--ink)" : "var(--off)";
+      var lab = label(t);
+      s.push(txt(4, y + 4, clip(lab, W < 400 ? 13 : 17), "start", col, fs, false, lab));
+      if (!r.estimable) {
+        s.push(txt((L + R) / 2, y + 4, "not estimable", "middle", "var(--off)", fs - 1, false));
+        return;
+      }
+      var xm = x(r.rr);
+      s.push('<line x1="' + x(r.lo) + '" x2="' + x(r.hi) + '" y1="' + y + '" y2="' + y + '" stroke="' + col + '" stroke-width="1.6"/>');
+      if (r.lo < LMIN) s.push(arrow(x(LMIN), y, -1, col));
+      if (r.hi > LMAX) s.push(arrow(x(LMAX), y, 1, col));
+      if (on && r.weight !== null) {
+        var side = 4 + Math.sqrt(r.weight) * 2.0;
+        s.push('<rect x="' + (xm - side / 2) + '" y="' + (y - side / 2) + '" width="' + side + '" height="' + side + '" fill="var(--accent)"/>');
+      } else if (r.rr >= LMIN && r.rr <= LMAX) {
+        s.push('<rect x="' + (xm - 4) + '" y="' + (y - 4) + '" width="8" height="8" fill="none" stroke="var(--off)" stroke-width="1.5"/>');
+      }
+      if (showW) s.push(txt(xWt, y + 4, on && r.weight !== null ? r.weight.toFixed(1) + "%" : "–", "end", col, fs, false));
+      if (showRR) s.push(txt(W - 2, y + 4, ci(r.rr, r.lo, r.hi), "end", col, fs, false));
+    });
+    if (prevResult) s.push(diamond(x(prevResult.lo), x(prevResult.rr), x(prevResult.hi), diamY, 'fill="none" stroke="var(--tealink)" stroke-width="1.6" stroke-dasharray="4 3"'));
+    if (res) {
+      s.push(txt(4, diamY + 4, "Pooled (" + res.k + (res.k === 1 ? " trial)" : " trials)"), "start", "var(--ink)", fs, true));
+      s.push(diamond(x(res.lo), x(res.rr), x(res.hi), diamY, 'fill="var(--accent)" fill-opacity="0.9"'));
+      if (showW) s.push(txt(xWt, diamY + 4, "100%", "end", "var(--ink)", fs, true));
+      if (showRR) s.push(txt(W - 2, diamY + 4, ci(res.rr, res.lo, res.hi), "end", "var(--ink)", fs, true));
+    } else {
+      s.push(txt(4, diamY + 4, "No trials pooled", "start", "var(--muted)", fs, true));
+    }
+    s.push('<line x1="' + L + '" x2="' + R + '" y1="' + axisY + '" y2="' + axisY + '" stroke="var(--ink)" stroke-width="1"/>');
+    ticks.forEach(function (tk) {
+      s.push('<line x1="' + x(tk) + '" x2="' + x(tk) + '" y1="' + axisY + '" y2="' + (axisY + 5) + '" stroke="var(--ink)" stroke-width="1"/>');
+      s.push(txt(x(tk), axisY + 18, String(tk), "middle", "var(--muted)", fs - 1, false));
+    });
+    s.push(txt(x(1) - 6, axisY + 38, "Favours magnesium", "end", "var(--muted)", fs, false));
+    if (W < 400) s.push(txt(W - 2, axisY + 56, "Favours control", "end", "var(--muted)", fs, false));
+    else s.push(txt(x(1) + 6, axisY + 38, "Favours control", "start", "var(--muted)", fs, false));
+    s.push("</svg>");
+    $plot.innerHTML = s.join("");
+  }
+
+  // Funnel plot in the style of Egger & Davey Smith (1995): effect across, number of patients up (both log scales).
+  var FX = [0.1, 10], FY = [10, 100000];
+  function renderFunnel(rows, res) {
+    var W = Math.max(300, Math.round($funnel.clientWidth || $plot.clientWidth || 600));
+    var fs = W < 400 ? 12 : 13;
+    var L = 92, R = W - 16, T = 16, B = Math.round(Math.min(420, Math.max(300, W * 0.72)));
+    var H = B + 62;
+    function x(r) { var v = Math.min(Math.max(r, FX[0]), FX[1]); return L + (Math.log(v) - Math.log(FX[0])) / (Math.log(FX[1]) - Math.log(FX[0])) * (R - L); }
+    function y(n) { var v = Math.min(Math.max(n, FY[0]), FY[1]); return B - (Math.log(v) - Math.log(FY[0])) / (Math.log(FY[1]) - Math.log(FY[0])) * (B - T); }
+    var s = [];
+    var shown = rows.filter(function (r) { return r.estimable; });
+    s.push('<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-labelledby="funTitle funDesc">');
+    s.push('<title id="funTitle">Funnel plot: each trial\'s risk ratio against its number of patients</title>');
+    s.push('<desc id="funDesc">' + shown.length + " trials shown. " + (res ? "Pooled risk ratio " + f2(res.rr) + " from " + fint(res.participants) + " patients." : "") + '</desc>');
+    // axes
+    s.push('<line x1="' + L + '" x2="' + R + '" y1="' + B + '" y2="' + B + '" stroke="var(--ink)" stroke-width="1"/>');
+    s.push('<line x1="' + L + '" x2="' + L + '" y1="' + T + '" y2="' + B + '" stroke="var(--ink)" stroke-width="1"/>');
+    var xt = W < 400 ? [0.1, 1, 10] : [0.1, 0.2, 0.5, 1, 2, 5, 10];
+    xt.forEach(function (tk) {
+      s.push('<line x1="' + x(tk) + '" x2="' + x(tk) + '" y1="' + B + '" y2="' + (B + 5) + '" stroke="var(--ink)" stroke-width="1"/>');
+      s.push(txt(x(tk), B + 21, String(tk), "middle", "var(--muted)", fs - 1, false));
+    });
+    [10, 100, 1000, 10000, 100000].forEach(function (tk) {
+      s.push('<line x1="' + (L - 5) + '" x2="' + L + '" y1="' + y(tk) + '" y2="' + y(tk) + '" stroke="var(--ink)" stroke-width="1"/>');
+      s.push(txt(L - 8, y(tk) + 4, fint(tk), "end", "var(--muted)", fs - 1, false));
+    });
+    s.push(txt((L + R) / 2, B + 38, "Risk ratio (log scale)", "middle", "var(--muted)", fs, false));
+    s.push(txt(x(1) - 6, B + 54, "Favours magnesium", "end", "var(--muted)", fs - 1, false));
+    s.push(txt(x(1) + 6, B + 54, "Favours control", "start", "var(--muted)", fs - 1, false));
+    s.push('<text x="16" y="' + ((T + B) / 2) + '" transform="rotate(-90 16 ' + ((T + B) / 2) + ')" text-anchor="middle" fill="var(--muted)" font-size="' + fs + '">Number of patients (log scale)</text>');
+    // line of no effect
+    s.push('<line x1="' + x(1) + '" x2="' + x(1) + '" y1="' + T + '" y2="' + B + '" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4"/>');
+    // pooled result as a diamond across its CI, at the total number of patients
+    if (res) {
+      var py = y(res.participants);
+      s.push(diamond(x(res.lo), x(res.rr), x(res.hi), py, 'fill="none" stroke="var(--accent)" stroke-width="2"'));
+      s.push(txt(x(res.lo) - 10, py + 4, "Meta-analysis", "end", "var(--accent)", fs, true));
+    }
+    // trials
+    shown.forEach(function (r) {
+      var t = r.t, on = t.include;
+      var cx = x(r.rr), cy = y(t.n1 + t.n2);
+      s.push('<circle cx="' + cx + '" cy="' + cy + '" r="5" ' + (on ? 'fill="var(--ink)"' : 'fill="none" stroke="var(--off)" stroke-width="1.5"') + '><title>' +
+        esc(label(t)) + ": RR " + f2(r.rr) + ", " + fint(t.n1 + t.n2) + " patients</title></circle>");
+      if (t.n1 + t.n2 >= 1000) {
+        var tx = cx + 9, an = "start";
+        if (tx > R - 80) { tx = cx - 9; an = "end"; }
+        if (res && Math.abs(cy - y(res.participants)) < 14) { tx = Math.max(cx, x(res.hi)) + 9; an = "start"; }
+        s.push(txt(tx, cy + 4, t.name, an, on ? "var(--ink)" : "var(--off)", fs, true));
+      }
+    });
+    s.push("</svg>");
+    $funnel.innerHTML = s.join("");
+  }
+
+  function txt(x, y, t, anchor, fill, size, bold, full) {
+    return '<text x="' + x + '" y="' + y + '" text-anchor="' + anchor + '" fill="' + fill + '" font-size="' + size + '"' +
+      (bold ? ' font-weight="bold"' : "") + ">" + (full && full !== t ? "<title>" + esc(full) + "</title>" : "") + esc(t) + "</text>";
+  }
+  function clip(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+  function arrow(x, y, dir, col) {
+    return '<path d="M' + x + ' ' + y + ' l' + (-7 * dir) + ' -4 v8 z" fill="' + col + '"/>';
+  }
+  function diamond(xl, xm, xr, y, attrs) {
+    return '<path d="M' + xl + ' ' + y + ' L' + xm + ' ' + (y - 8) + ' L' + xr + ' ' + y + ' L' + xm + ' ' + (y + 8) + ' Z" ' + attrs + '/>';
+  }
+
+  function renderAbout() {
+    var html = "<dd>The first seven trials are the ones Teo et al. pooled in 1991. The death counts come from the " +
+      "dataset compiled by Egger, Davey Smith and Altman (2001). The risk-of-bias ratings are ours, made for this " +
+      "exercise from the published reports; none of the seven small trials reports how allocation was concealed, and " +
+      "most measured arrhythmias as their main outcome, with deaths reported alongside.</dd>";
+    html += state.trials.map(function (t) {
+      if (t.known) return "<dt>" + esc(label(t)) + "</dt><dd>" + esc(t.known.about) + "</dd>";
+      if (t.added) return "<dt>" + esc(t.name) + "</dt><dd>Added by you. Risk of bias: " + ROB[t.rob].toLowerCase() + ".</dd>";
+      return "<dt>" + esc(label(t)) + " (" + ROB[t.rob].toLowerCase() + ")</dt><dd>" + esc(t.why) + "</dd>";
+    }).join("");
+    $about.innerHTML = html;
+  }
+
+  // ------------------------------------------------------------- tabs
+  var tabs = [document.getElementById("tab-forest"), document.getElementById("tab-funnel")];
+  function selectTab(i, focus) {
+    tabs.forEach(function (tb, j) {
+      var on = i === j;
+      tb.setAttribute("aria-selected", on ? "true" : "false");
+      tb.tabIndex = on ? 0 : -1;
+      document.getElementById(tb.getAttribute("aria-controls")).hidden = !on;
+    });
+    if (focus) tabs[i].focus();
+    var out = analyse();
+    if (i === 0) renderPlot(out.rows, out.res); else renderFunnel(out.rows, out.res);
+  }
+  tabs.forEach(function (tb, i) {
+    tb.addEventListener("click", function () { selectTab(i, false); });
+    tb.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); selectTab(1 - i, true); }
+    });
+  });
+
+  // ------------------------------------------------------------- events
+  function snapshot() { prevResult = lastResult; }
+
+  $rows.addEventListener("change", function (e) {
+    var id = e.target.getAttribute("data-id");
+    if (!id) return;
+    snapshot();
+    state.trials.forEach(function (t) { if (t.id === id) t.include = e.target.checked; });
+    var matches = state.filter !== "custom" && state.trials.every(function (t) { return t.include === allowed(t.rob, state.filter); });
+    if (!matches) state.filter = "custom";
+    render();
+  });
+  $rows.addEventListener("click", function (e) {
+    var id = e.target.getAttribute("data-remove");
+    if (!id) return;
+    snapshot();
+    state.trials = state.trials.filter(function (t) { return t.id !== id; });
+    render();
+    document.getElementById("f-name").focus();
+  });
+  document.querySelectorAll('input[name="filter"]').forEach(function (radio) {
+    radio.addEventListener("change", function () {
+      if (!radio.checked) return;
+      snapshot();
+      state.filter = radio.value;
+      state.trials.forEach(function (t) { t.include = allowed(t.rob, state.filter); });
+      render();
+    });
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    state = fresh(); prevResult = null; render();
+    var m = document.getElementById("formMsg"); m.textContent = ""; m.className = "formmsg full";
+  });
+
+  function sameCounts(t, v) { return t.a === v.a && t.n1 === v.n1 && t.c === v.c && t.n2 === v.n2; }
+
+  var form = document.getElementById("addForm");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = document.getElementById("formMsg");
+    var fields = ["a", "n1", "c", "n2"].map(function (k) { return form.elements[k]; });
+    fields.concat([form.elements.name, form.elements.rob]).forEach(function (f) { f.removeAttribute("aria-invalid"); });
+    var name = form.elements.name.value.trim();
+    var rob = form.elements.rob.value;
+    var vals = {}, bad = [];
+    fields.forEach(function (f) {
+      var raw = f.value.trim().replace(/[,\s]/g, ""), v = Number(raw);
+      if (raw === "" || !isFinite(v) || v < 0 || Math.floor(v) !== v) bad.push(f); else vals[f.name] = v;
+    });
+    var problem = "";
+    if (!name) { problem = "Give the trial a name."; form.elements.name.setAttribute("aria-invalid", "true"); }
+    else if (bad.length) { problem = "Enter whole numbers (0 or more) for the deaths and totals."; bad.forEach(function (f) { f.setAttribute("aria-invalid", "true"); }); }
+    else if (vals.n1 < 1 || vals.n2 < 1) { problem = "Each group needs at least one participant."; }
+    else if (vals.a > vals.n1) { problem = "The magnesium group can't have more deaths than participants."; form.elements.a.setAttribute("aria-invalid", "true"); }
+    else if (vals.c > vals.n2) { problem = "The control group can't have more deaths than participants."; form.elements.c.setAttribute("aria-invalid", "true"); }
+    else if (!rob) { problem = "Choose a risk-of-bias rating."; form.elements.rob.setAttribute("aria-invalid", "true"); }
+    else if (state.trials.some(function (t) { return sameCounts(t, vals); })) { problem = "A trial with exactly these numbers is already in the table."; }
+    else if (state.trials.filter(function (t) { return t.added; }).length >= 8) { problem = "That's enough added trials. Remove one first, or start again."; }
+    if (problem) { msg.textContent = problem; msg.className = "formmsg full err"; return; }
+
+    snapshot();
+    var known = KNOWN.filter(function (k) { return sameCounts(k, vals); })[0] || null;
+    var note = "";
+    if (known && rob !== known.rob) {
+      note = " Our rating for this trial is " + ROB[known.rob].toLowerCase() + " risk of bias, so it has been recorded as " + ROB[known.rob].toLowerCase() + ".";
+      rob = known.rob;
+    }
+    var t = { id: "added" + (nextId++), name: name, year: known ? known.year : null, a: vals.a, n1: vals.n1, c: vals.c, n2: vals.n2,
+              rob: rob, added: true, known: known };
+    t.include = state.filter === "custom" ? true : allowed(rob, state.filter);
+    state.trials.push(t);
+    form.reset();
+    msg.textContent = "Added " + name + "." + note + (t.include ? "" : " It is not pooled, because of the risk-of-bias filter.");
+    msg.className = "formmsg full ok";
+    render();
+  });
+
+  // Re-lay out the visible plot when its box changes width.
+  function relayout() { var out = analyse(); renderPlot(out.rows, out.res); renderFunnel(out.rows, out.res); }
+  if (window.ResizeObserver) {
+    var lastW = 0;
+    new ResizeObserver(function () {
+      var w = document.querySelector(".plotcol").clientWidth;
+      if (Math.abs(w - lastW) > 2) { lastW = w; relayout(); }
+    }).observe(document.querySelector(".plotcol"));
+  } else {
+    window.addEventListener("resize", relayout);
+  }
+
+  state = fresh();
+  render();
+  window.SEEM_MA = { trialStats: trialStats, pool: pool, chi2sf: chi2sf };
+})();
+</script>
+</body>
+</html>
